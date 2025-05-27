@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La vuelta al mundo PASAPORTE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        passport: {
+                            light: '#fef3c7',
+                            DEFAULT: '#fef3c7',
+                            dark: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css">
+    <style>
+        #map { height: 500px; }
+        .passport-page {
+            transform-style: preserve-3d;
+            transition: all 0.5s ease;
+        }
+        .passport-page:hover {
+            transform: rotateY(10deg);
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+        }
+        .country-visited {
+            fill: #10b981 !important;
+            stroke: #047857 !important;
+        }
+        .modal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .modal-hidden {
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div class="flex items-center">
+                <i class="fas fa-passport text-4xl text-emerald-600 mr-3"></i>
+                <h1 class="text-3xl font-bold">La vuelta al mundo PASAPORTE</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="darkModeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">
+                    <i class="fas fa-moon dark:hidden"></i>
+                    <i class="fas fa-sun hidden dark:block"></i>
+                </button>
+                <button id="languageToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">
+                    <i class="fas fa-language"></i>
+                </button>
+                <div class="relative">
+                    <button id="userMenuButton" class="flex items-center space-x-2">
+                        <img src="https://ui-avatars.com/api/?name=Usuario&background=10b981&color=fff" 
+                             alt="User" class="w-10 h-10 rounded-full">
+                        <span class="font-medium">Usuario</span>
+                    </button>
+                    <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
+                        <a href="#" id="profileLink" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Perfil</a>
+                        <a href="#" id="settingsLink" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Configuración</a>
+                        <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Cerrar sesión</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Map Section -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold" id="mapTitle">Mapa de tus viajes</h2>
+                        <button id="locateMe" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center">
+                            <i class="fas fa-location-arrow mr-2"></i>
+                            <span id="locateText">Localizarme</span>
+                        </button>
+                    </div>
+                    <div id="map" class="rounded-lg overflow-hidden"></div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <div class="text-sm">
+                            <span id="countriesCount">0</span> países visitados de 195
+                        </div>
+                        <div class="w-3/4 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                            <div id="progressBar" class="bg-emerald-600 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Friends Section -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold mb-4" id="friendsTitle">Compara con amigos</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="text-center">
+                            <img src="https://ui-avatars.com/api/?name=Ana&background=3b82f6&color=fff" 
+                                 alt="Friend" class="w-16 h-16 rounded-full mx-auto mb-2">
+                            <p class="font-medium">Ana</p>
+                            <p class="text-sm text-emerald-600">45 países</p>
+                        </div>
+                        <div class="text-center">
+                            <img src="https://ui-avatars.com/api/?name=Carlos&background=ef4444&color=fff" 
+                                 alt="Friend" class="w-16 h-16 rounded-full mx-auto mb-2">
+                            <p class="font-medium">Carlos</p>
+                            <p class="text-sm text-emerald-600">32 países</p>
+                        </div>
+                        <div class="text-center">
+                            <img src="https://ui-avatars.com/api/?name=Luisa&background=8b5cf6&color=fff" 
+                                 alt="Friend" class="w-16 h-16 rounded-full mx-auto mb-2">
+                            <p class="font-medium">Luisa</p>
+                            <p class="text-sm text-emerald-600">28 países</p>
+                        </div>
+                        <div class="text-center">
+                            <img src="https://ui-avatars.com/api/?name=Pedro&background=f59e0b&color=fff" 
+                                 alt="Friend" class="w-16 h-16 rounded-full mx-auto mb-2">
+                            <p class="font-medium">Pedro</p>
+                            <p class="text-sm text-emerald-600">19 países</p>
+                        </div>
+                    </div>
+                    <button class="mt-4 w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 py-2 rounded-lg">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        <span id="addFriendText">Agregar amigos</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-6">
+                <!-- Passport Section -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold" id="passportTitle">Tu pasaporte</h2>
+                        <button id="newPassportPage" class="bg-emerald-600 text-white p-2 rounded-lg hover:bg-emerald-700">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-4 h-96 overflow-y-auto">
+                        <div class="passport-page bg-passport-light dark:bg-yellow-900 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <img src="https://flagcdn.com/w80/es.png" alt="Spain Flag" class="w-16 h-12 object-cover border">
+                                    <p class="font-bold mt-1">España</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Visitado: 15/06/2023</p>
+                                </div>
+                                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                            </div>
+                            <textarea class="w-full bg-passport-light dark:bg-yellow-900 border border-amber-200 dark:border-amber-600 rounded p-2 text-sm h-24" 
+                                      placeholder="Escribe tus recuerdos de este país...">¡Mi primer viaje internacional! Las playas de Barcelona son increíbles.</textarea>
+                        </div>
+                        <div class="passport-page bg-passport-light dark:bg-yellow-900 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <img src="https://flagcdn.com/w80/fr.png" alt="France Flag" class="w-16 h-12 object-cover border">
+                                    <p class="font-bold mt-1">Francia</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Visitado: 22/07/2023</p>
+                                </div>
+                                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                            </div>
+                            <textarea class="w-full bg-passport-light dark:bg-yellow-900 border border-amber-200 dark:border-amber-600 rounded p-2 text-sm h-24" 
+                                      placeholder="Escribe tus recuerdos de este país...">La Torre Eiffel es aún más impresionante en persona. ¡Y los croissants!</textarea>
+                        </div>
+                        <div class="passport-page bg-passport-light dark:bg-yellow-900 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <img src="https://flagcdn.com/w80/it.png" alt="Italy Flag" class="w-16 h-12 object-cover border">
+                                    <p class="font-bold mt-1">Italia</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Visitado: 05/09/2023</p>
+                                </div>
+                                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                            </div>
+                            <textarea class="w-full bg-passport-light dark:bg-yellow-900 border border-amber-200 dark:border-amber-600 rounded p-2 text-sm h-24" 
+                                      placeholder="Escribe tus recuerdos de este país...">El Coliseo es impresionante, y la pizza en Nápoles es la mejor del mundo.</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Achievements Section -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-xl font-semibold mb-4" id="achievementsTitle">Logros</h2>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="text-center p-2">
+                            <div class="bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <i class="fas fa-globe-europe text-xl"></i>
+                            </div>
+                            <p class="text-xs font-medium">Europa</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">3/44</p>
+                        </div>
+                        <div class="text-center p-2">
+                            <div class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <i class="fas fa-flag text-xl"></i>
+                            </div>
+                            <p class="text-xs font-medium">Primeros 5</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">3/5</p>
+                        </div>
+                        <div class="text-center p-2">
+                            <div class="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <i class="fas fa-passport text-xl"></i>
+                            </div>
+                            <p class="text-xs font-medium">Viajero</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">3/10</p>
+                        </div>
+                    </div>
+                    <button class="mt-4 w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 py-2 rounded-lg">
+                        <i class="fas fa-trophy mr-2"></i>
+                        <span id="viewAllText">Ver todos</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 opacity-0 modal-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Perfil de Usuario</h3>
+                <button id="closeProfileModal" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div class="flex justify-center">
+                    <div class="relative">
+                        <img src="https://ui-avatars.com/api/?name=Usuario&background=10b981&color=fff" 
+                             alt="User" class="w-24 h-24 rounded-full">
+                        <button class="absolute bottom-0 right-0 bg-emerald-600 text-white p-2 rounded-full hover:bg-emerald-700">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Nombre</label>
+                    <input type="text" value="Usuario" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Correo electrónico</label>
+                    <input type="email" value="usuario@ejemplo.com" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Biografía</label>
+                    <textarea class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700 h-24">¡Amante de los viajes y las aventuras!</textarea>
+                </div>
+                <button class="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 opacity-0 modal-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Configuración</h3>
+                <button id="closeSettingsModal" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <h4 class="font-medium mb-2">Idioma</h4>
+                    <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700">
+                        <option value="es">Español</option>
+                        <option value="en">English</option>
+                        <option value="fr">Français</option>
+                    </select>
+                </div>
+                <div>
+                    <h4 class="font-medium mb-2">Notificaciones</h4>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" checked class="rounded text-emerald-600">
+                            <span>Nuevos países detectados</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" checked class="rounded text-emerald-600">
+                            <span>Actualizaciones de amigos</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" class="rounded text-emerald-600">
+                            <span>Boletín de viajes</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-medium mb-2">Cambiar contraseña</h4>
+                    <div class="space-y-2">
+                        <input type="password" placeholder="Contraseña actual" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700">
+                        <input type="password" placeholder="Nueva contraseña" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700">
+                        <input type="password" placeholder="Confirmar nueva contraseña" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700">
+                    </div>
+                </div>
+                <button class="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700">
+                    Guardar configuración
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Country Modal -->
+    <div id="addCountryModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 opacity-0 modal-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="addCountryTitle">Añadir país visitado</h3>
+                <button id="closeAddCountryModal" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">País</label>
+                    <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700">
+                        <option value="">Selecciona un país</option>
+                        <option value="pt">Portugal</option>
+                        <option value="de">Alemania</option>
+                        <option value="uk">Reino Unido</option>
+                        <option value="us">Estados Unidos</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Fecha de visita</label>
+                    <input type="date" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Notas</label>
+                    <textarea class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-700 h-24" placeholder="Escribe tus recuerdos de este país..."></textarea>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button id="cancelAddCountry" class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                        Cancelar
+                    </button>
+                    <button id="confirmAddCountry" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700">
+                        Añadir país
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="locationNotification" class="hidden fixed bottom-4 right-4 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-4 w-80 z-50 border-l-4 border-emerald-500">
+        <div class="flex justify-between items-start">
+            <div class="flex items-start">
+                <i class="fas fa-map-marker-alt text-emerald-500 mt-1 mr-3"></i>
+                <div>
+                    <h3 class="font-medium" id="notificationTitle">Nuevo país detectado</h3>
+                    <p class="text-sm" id="notificationText">Parece que estás en Portugal. ¿Quieres añadirlo a tu pasaporte?</p>
+                </div>
+            </div>
+            <button id="closeNotification" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="flex justify-end mt-3 space-x-2">
+            <button id="laterNotification" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-sm">Más tarde</button>
+            <button id="addNotification" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm">Añadir</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize map
+            const map = L.map('map').setView([20, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Sample countries data (in a real app, this would come from an API)
+            const countries = [
+                { code: 'es', name: 'España', lat: 40.4637, lng: -3.7492, visited: true },
+                { code: 'fr', name: 'Francia', lat: 46.2276, lng: 2.2137, visited: true },
+                { code: 'it', name: 'Italia', lat: 41.8719, lng: 12.5674, visited: true },
+                { code: 'pt', name: 'Portugal', lat: 39.3999, lng: -8.2245, visited: false }
+            ];
+
+            // Add markers for visited countries
+            countries.forEach(country => {
+                if (country.visited) {
+                    const marker = L.marker([country.lat, country.lng]).addTo(map);
+                    marker.bindPopup(`<b>${country.name}</b><br>Visitado`);
+                }
+            });
+
+            // Update progress bar and count
+            function updateProgress() {
+                const visitedCount = countries.filter(c => c.visited).length;
+                const percentage = (visitedCount / 195 * 100).toFixed(1);
+                
+                document.getElementById('countriesCount').textContent = visitedCount;
+                document.getElementById('progressBar').style.width = `${percentage}%`;
+            }
+            updateProgress();
+
+            // Locate me button
+            document.getElementById('locateMe').addEventListener('click', function() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        position => {
+                            const { latitude, longitude } = position.coords;
+                            map.flyTo([latitude, longitude], 8);
+                            
+                            // In a real app, we would check which country this is
+                            showNotification('Portugal');
+                        },
+                        error => {
+                            alert('No se pudo obtener tu ubicación: ' + error.message);
+                        }
+                    );
+                } else {
+                    alert('La geolocalización no es soportada por tu navegador');
+                }
+            });
+
+            // Show notification
+            function showNotification(countryName) {
+                document.getElementById('notificationTitle').textContent = 'Nuevo país detectado';
+                document.getElementById('notificationText').textContent = `Parece que estás en ${countryName}. ¿Quieres añadirlo a tu pasaporte?`;
+                document.getElementById('locationNotification').classList.remove('hidden');
+            }
+
+            // Close notification
+            document.getElementById('closeNotification').addEventListener('click', function() {
+                document.getElementById('locationNotification').classList.add('hidden');
+            });
+
+            // Later notification button
+            document.getElementById('laterNotification').addEventListener('click', function() {
+                document.getElementById('locationNotification').classList.add('hidden');
+            });
+
+            // Add notification button
+            document.getElementById('addNotification').addEventListener('click', function() {
+                document.getElementById('locationNotification').classList.add('hidden');
+                showAddCountryModal('Portugal');
+            });
+
+            // Dark mode toggle
+            document.getElementById('darkModeToggle').addEventListener('click', function() {
+                document.documentElement.classList.toggle('dark');
+                localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+            });
+
+            // Check for saved dark mode preference
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.documentElement.classList.add('dark');
+            }
+
+            // Language toggle (English/Spanish)
+            let currentLanguage = 'es';
+            document.getElementById('languageToggle').addEventListener('click', function() {
+                currentLanguage = currentLanguage === 'es' ? 'en' : 'es';
+                updateLanguage();
+            });
+
+            function updateLanguage() {
+                const translations = {
+                    'es': {
+                        mapTitle: 'Mapa de tus viajes',
+                        locateText: 'Localizarme',
+                        friendsTitle: 'Compara con amigos',
+                        addFriendText: 'Agregar amigos',
+                        passportTitle: 'Tu pasaporte',
+                        achievementsTitle: 'Logros',
+                        viewAllText: 'Ver todos',
+                        notificationTitle: 'Nuevo país detectado',
+                        addCountryTitle: 'Añadir país visitado'
+                    },
+                    'en': {
+                        mapTitle: 'Your travel map',
+                        locateText: 'Locate me',
+                        friendsTitle: 'Compare with friends',
+                        addFriendText: 'Add friends',
+                        passportTitle: 'Your passport',
+                        achievementsTitle: 'Achievements',
+                        viewAllText: 'View all',
+                        notificationTitle: 'New country detected',
+                        addCountryTitle: 'Add visited country'
+                    }
+                };
+
+                Object.keys(translations[currentLanguage]).forEach(key => {
+                    const element = document.getElementById(key);
+                    if (element) {
+                        element.textContent = translations[currentLanguage][key];
+                    }
+                });
+            }
+
+            // User menu toggle
+            document.getElementById('userMenuButton').addEventListener('click', function() {
+                document.getElementById('userMenu').classList.toggle('hidden');
+            });
+
+            // Close user menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('#userMenuButton') && !event.target.closest('#userMenu')) {
+                    document.getElementById('userMenu').classList.add('hidden');
+                }
+            });
+
+            // Profile link
+            document.getElementById('profileLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                showProfileModal();
+            });
+
+            // Settings link
+            document.getElementById('settingsLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                showSettingsModal();
+            });
+
+            // Add new passport page
+            document.getElementById('newPassportPage').addEventListener('click', function() {
+                showAddCountryModal();
+            });
+
+            // Modal functions
+            function showModal(modalId) {
+                const modal = document.getElementById(modalId);
+                modal.classList.remove('modal-hidden');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function hideModal(modalId) {
+                const modal = document.getElementById(modalId);
+                modal.classList.add('modal-hidden');
+                document.body.style.overflow = 'auto';
+            }
+
+            function showProfileModal() {
+                showModal('profileModal');
+            }
+
+            function hideProfileModal() {
+                hideModal('profileModal');
+            }
+
+            function showSettingsModal() {
+                showModal('settingsModal');
+            }
+
+            function hideSettingsModal() {
+                hideModal('settingsModal');
+            }
+
+            function showAddCountryModal(countryName) {
+                if (countryName) {
+                    const select = document.querySelector('#addCountryModal select');
+                    select.value = countryName.toLowerCase();
+                }
+                showModal('addCountryModal');
+            }
+
+            function hideAddCountryModal() {
+                hideModal('addCountryModal');
+            }
+
+            // Close modals
+            document.getElementById('closeProfileModal').addEventListener('click', hideProfileModal);
+            document.getElementById('closeSettingsModal').addEventListener('click', hideSettingsModal);
+            document.getElementById('closeAddCountryModal').addEventListener('click', hideAddCountryModal);
+            document.getElementById('cancelAddCountry').addEventListener('click', hideAddCountryModal);
+
+            // Confirm add country
+            document.getElementById('confirmAddCountry').addEventListener('click', function() {
+                const select = document.querySelector('#addCountryModal select');
+                const countryCode = select.value;
+                const countryName = select.options[select.selectedIndex].text;
+                
+                if (countryCode) {
+                    // In a real app, we would save this to a database
+                    alert(`País ${countryName} añadido a tu pasaporte!`);
+                    hideAddCountryModal();
+                    
+                    // Update UI
+                    const visitedCountry = countries.find(c => c.code === countryCode);
+                    if (visitedCountry) {
+                        visitedCountry.visited = true;
+                        updateProgress();
+                        
+                        // Add marker to map
+                        const marker = L.marker([visitedCountry.lat, visitedCountry.lng]).addTo(map);
+                        marker.bindPopup(`<b>${visitedCountry.name}</b><br>Visitado`);
+                    }
+                }
+            });
+
+            // Close modals when clicking outside
+            const modals = ['profileModal', 'settingsModal', 'addCountryModal'];
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        hideModal(modalId);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
